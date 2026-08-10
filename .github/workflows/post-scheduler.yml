@@ -1,0 +1,47 @@
+name: Instagram予約投稿
+
+on:
+  schedule:
+    # 10分ごとに実行（UTC基準のcron。GitHub Actionsのcronはタイムゾーン指定不可のためUTCで記述）
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+# 前回の実行が終わるまで次の実行を待機させることで、リール処理中などに多重実行して
+# 二重投稿が発生するのを防ぐ
+concurrency:
+  group: instagram-post-scheduler
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # 画像自動生成機能がmedia/フォルダへコミットするために必要
+    permissions:
+      contents: write
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: Node.jsをセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: 依存パッケージをインストール
+        run: npm ci
+
+      - name: 投稿予約スクリプトを実行
+        run: npm start
+        env:
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          IG_APP_ID: ${{ secrets.IG_APP_ID }}
+          IG_APP_SECRET: ${{ secrets.IG_APP_SECRET }}
+          # 画像自動生成機能（任意）。OPENAI_API_KEYのみGitHub Secretsへの登録が必要。
+          # GITHUB_TOKEN/GITHUB_REPOはActionsが自動的に提供するため設定不要。
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
