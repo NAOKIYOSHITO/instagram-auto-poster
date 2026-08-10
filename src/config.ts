@@ -54,6 +54,6 @@ export const SHEET = {
 /** トークンの残り有効日数がこれ以下になったら自動更新する */
 export const TOKEN_REFRESH_THRESHOLD_DAYS = 5;
 
-/** リール動画のエンコード完了待ちの上限（ミリ秒）とポーリング間隔 */
-export const REEL_PROCESSING_TIMEOUT_MS = 4 * 60 * 1000;
-export const REEL_POLL_INTERVAL_MS = 8 * 1000;
+/** メディアコンテナ（画像・動画とも）の処理完了待ちの上限（ミリ秒）とポーリング間隔 */
+export const MEDIA_PROCESSING_TIMEOUT_MS = 4 * 60 * 1000;
+export const MEDIA_POLL_INTERVAL_MS = 8 * 1000;

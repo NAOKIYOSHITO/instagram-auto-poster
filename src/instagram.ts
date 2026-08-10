@@ -1,5 +1,5 @@
 import axios, { AxiosError } from "axios";
-import { config, REEL_POLL_INTERVAL_MS, REEL_PROCESSING_TIMEOUT_MS } from "./config";
+import { config, MEDIA_POLL_INTERVAL_MS, MEDIA_PROCESSING_TIMEOUT_MS } from "./config";
 import { CarouselItem, PostType } from "./types";
 
 const GRAPH_BASE_URL = `https://graph.facebook.com/${config.instagram.graphApiVersion}`;
@@ -57,18 +57,22 @@ async function getContainerStatus(containerId: string, accessToken: string): Pro
   return res.data.status_code;
 }
 
-/** 動画コンテナのエンコードが完了する(FINISHED)までポーリングする */
+/**
+ * メディアコンテナの処理が完了する(FINISHED)までポーリングする。
+ * 画像・動画とも、作成直後は処理が完了しておらず即座に公開すると
+ * 「Media ID is not available」エラーになることがあるため、画像でも待機する。
+ */
 async function waitUntilFinished(containerId: string, accessToken: string): Promise<void> {
-  const deadline = Date.now() + REEL_PROCESSING_TIMEOUT_MS;
+  const deadline = Date.now() + MEDIA_PROCESSING_TIMEOUT_MS;
   while (Date.now() < deadline) {
     const status = await getContainerStatus(containerId, accessToken);
     if (status === "FINISHED") return;
     if (status === "ERROR") {
-      throw new Error("動画の処理中にInstagram側でエラーが発生しました（status_code=ERROR）");
+      throw new Error("メディアの処理中にInstagram側でエラーが発生しました（status_code=ERROR）");
     }
-    await sleep(REEL_POLL_INTERVAL_MS);
+    await sleep(MEDIA_POLL_INTERVAL_MS);
   }
-  throw new Error("動画の処理がタイムアウトしました。ファイルサイズ・形式を確認し、時間をおいて再試行してください。");
+  throw new Error("メディアの処理がタイムアウトしました。ファイルサイズ・形式を確認し、時間をおいて再試行してください。");
 }
 
 async function publishContainer(
@@ -98,6 +102,7 @@ async function publishImage(
     image_url: imageUrl,
     caption,
   });
+  await waitUntilFinished(containerId, accessToken);
   return publishContainer(igUserId, accessToken, containerId);
 }
 
@@ -138,9 +143,7 @@ async function publishCarousel(
       params.image_url = item.url;
     }
     const containerId = await createContainer(igUserId, accessToken, params);
-    if (item.isVideo) {
-      await waitUntilFinished(containerId, accessToken);
-    }
+    await waitUntilFinished(containerId, accessToken);
     childrenIds.push(containerId);
   }
 
@@ -149,6 +152,7 @@ async function publishCarousel(
     children: childrenIds.join(","),
     caption,
   });
+  await waitUntilFinished(carouselContainerId, accessToken);
   return publishContainer(igUserId, accessToken, carouselContainerId);
 }
 
