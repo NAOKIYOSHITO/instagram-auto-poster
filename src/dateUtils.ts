@@ -9,10 +9,17 @@ dayjs.extend(customParseFormat);
 
 export const JST = "Asia/Tokyo";
 
-/** "YYYY-MM-DD HH:mm" 形式（JST想定）の文字列をパースする。不正な形式なら null。 */
+/** "YYYY-MM-DD HH:mm" 形式（JST想定）の文字列をパースする。空欄・不正な形式なら null。 */
 export function parseJstDateTime(value: string): dayjs.Dayjs | null {
-  const parsed = dayjs.tz(value.trim(), "YYYY-MM-DD HH:mm", JST);
-  return parsed.isValid() ? parsed : null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = dayjs.tz(trimmed, "YYYY-MM-DD HH:mm", JST);
+    return parsed.isValid() ? parsed : null;
+  } catch {
+    // 空欄や極端に不正な文字列だとdayjsが例外を投げることがあるため吸収する
+    return null;
+  }
 }
 
 export function nowJst(): dayjs.Dayjs {
